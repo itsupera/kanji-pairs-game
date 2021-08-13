@@ -6,7 +6,7 @@ import Html.Events exposing (onClick)
 import Html.Attributes exposing (style)
 import Array exposing (Array)
 
-import JukugoData exposing (jukugos)
+import JukugoData exposing (jukugos, Kanji, matchingKanjiPair)
 import Html.Attributes exposing (selected)
 
 -- MAIN
@@ -19,8 +19,6 @@ main =
 
 
 -- MODEL
-
-type alias Kanji = String
 
 
 type alias Model =
@@ -61,15 +59,10 @@ update msg model =
               if selectedIdx == idx
               then {model | selected = Nothing}  -- cancel selection
               else (
-                if matchingPair model.kanjis selectedIdx idx
+                if matchingKanjiPair selectedKanji kanji
                 then {model | selected = Nothing, matches = (updateMatches model.matches (selectedKanji, kanji)) }
                 else model
               )
-
-matchingPair : Array Kanji -> Int -> Int -> Bool
-matchingPair kanjis firstSel secondSel =
-    firstSel == secondSel - 1
-
 
 updateMatches matches newMatch =
     matches ++ [newMatch]

@@ -1,22 +1,39 @@
-module JukugoData exposing (jukugos)
+module JukugoData exposing (jukugos, Kanji, jukugosDict, matchingKanjiPair)
 
 import Csv exposing (Csv, parseWith)
 import Array exposing (fromList, get)
 import Maybe.Extra exposing (values)
+import Set exposing (Set)
+import MultiDict exposing (MultiDict, get)
 
-jukugos : List (String, String)
+
+type alias Kanji = String
+
+matchingKanjiPair : Kanji -> Kanji -> Bool
+matchingKanjiPair a b =
+    MultiDict.get a jukugosDict |> Set.member b
+       
+
+jukugosDict : MultiDict Kanji Kanji
+jukugosDict =
+    List.foldl f MultiDict.empty jukugos
+
+f : (Kanji, Kanji) -> MultiDict Kanji Kanji -> MultiDict Kanji Kanji
+f (a, b) dict = MultiDict.insert a b dict
+
+jukugos : List (Kanji, Kanji)
 jukugos =
     jukugoCsv.records
     |> List.map extractWord
     |> values
 
-extractWord : List String -> Maybe (String, String)
+extractWord : List String -> Maybe (Kanji, Kanji)
 extractWord lst =
     Array.fromList lst
     |> Array.get 1
     |> Maybe.andThen wordToKanjiPair
 
-wordToKanjiPair : String -> Maybe (String, String)
+wordToKanjiPair : String -> Maybe (Kanji, Kanji)
 wordToKanjiPair word =
     case String.split "" word of
         [a, b] -> Just (a, b)
