@@ -7,15 +7,27 @@ import Html.Attributes exposing (style)
 import Array exposing (Array)
 
 import JukugoData exposing (jukugos, Kanji, matchingKanjiPair)
-import Html.Attributes exposing (selected)
 
 -- MAIN
 
-
 main : Program () Model Msg
 main =
-  Browser.sandbox { init = init, update = update, view = view }
+    Browser.element
+        { init = init
+        , update = update
+        , subscriptions = subscriptions
+        , view = view
+        }
 
+
+init : () -> ( Model, Cmd Msg )
+init query =
+    ( initModel
+    , Cmd.none
+    )
+
+subscriptions : Model -> Sub Msg
+subscriptions model = Sub.none
 
 
 -- MODEL
@@ -28,8 +40,8 @@ type alias Model =
   }
 
 
-init : Model
-init =
+initModel : Model
+initModel =
   { kanjis = initKanjis, selected = Nothing, matches = [] }
 
 initKanjis : Array String
@@ -46,22 +58,22 @@ type Msg
   = Clicked Int
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
     Clicked idx ->
       case Array.get idx model.kanjis of
-        Nothing -> model
+        Nothing -> (model, Cmd.none)
         Just kanji -> 
           case model.selected of
-            Nothing -> {model | selected = Just (idx, kanji)}
+            Nothing -> ({model | selected = Just (idx, kanji)}, Cmd.none)
             Just (selectedIdx, selectedKanji) ->
               if selectedIdx == idx
-              then {model | selected = Nothing}  -- cancel selection
+              then ({model | selected = Nothing}, Cmd.none)  -- cancel selection
               else (
                 if matchingKanjiPair selectedKanji kanji
-                then {model | selected = Nothing, matches = (updateMatches model.matches (selectedKanji, kanji)) }
-                else model
+                then ({model | selected = Nothing, matches = (updateMatches model.matches (selectedKanji, kanji)) }, Cmd.none)
+                else (model, Cmd.none)
               )
 
 updateMatches matches newMatch =
