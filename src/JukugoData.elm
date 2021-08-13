@@ -4,19 +4,24 @@ import Csv exposing (Csv, parseWith)
 import Array exposing (fromList, get)
 import Maybe.Extra exposing (values)
 
-jukugos : List String
+jukugos : List (String, String)
 jukugos =
     jukugoCsv.records
     |> List.map extractWord
     |> values
 
--- List.concat extractWord
-
-extractWord : List String -> Maybe String
+extractWord : List String -> Maybe (String, String)
 extractWord lst =
     Array.fromList lst
     |> Array.get 1
-   
+    |> Maybe.andThen wordToKanjiPair
+
+wordToKanjiPair : String -> Maybe (String, String)
+wordToKanjiPair word =
+    case String.split "" word of
+        [a, b] -> Just (a, b)
+        _ -> Nothing
+
 jukugoCsv : Csv
 jukugoCsv = parseWith ";" jukugoDataStr
 

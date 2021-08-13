@@ -37,7 +37,7 @@ init =
 initKanjis : Array String
 initKanjis =
   List.take 8 jukugos
-  |> List.concatMap (\x -> String.split "" x)
+  |> List.concatMap (\(a, b) -> [a, b])
   |> Array.fromList
 
 
