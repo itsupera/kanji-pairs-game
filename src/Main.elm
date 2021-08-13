@@ -3,12 +3,14 @@ module Main exposing (..)
 import Browser
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
+import Html.Attributes exposing (style)
 
 
 
 -- MAIN
 
 
+main : Program () Model Msg
 main =
   Browser.sandbox { init = init, update = update, view = view }
 
@@ -17,12 +19,26 @@ main =
 -- MODEL
 
 
-type alias Model = Int
+type alias Card = 
+  { kanji: String
+  , selected: Bool
+  }
+
+defaultCard : Card
+defaultCard =
+  { kanji = "水"
+  , selected = False
+  }
+
+type alias Model =
+  {
+  cards : List Card
+  }
 
 
 init : Model
 init =
-  0
+  { cards = List.repeat 16 defaultCard }
 
 
 
@@ -30,18 +46,14 @@ init =
 
 
 type Msg
-  = Increment
-  | Decrement
+  = Clicked Card
 
 
 update : Msg -> Model -> Model
 update msg model =
   case msg of
-    Increment ->
-      model + 1
-
-    Decrement ->
-      model - 1
+    Clicked _ ->
+      model
 
 
 
@@ -50,8 +62,20 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-  div []
-    [ button [ onClick Decrement ] [ text "-" ]
-    , div [] [ text (String.fromInt model) ]
-    , button [ onClick Increment ] [ text "+" ]
+  div
+    [ style "display" "grid"
+    , style "grid-template-columns" "1fr 1fr 1fr 1fr"
+    , style "grid-template-rows" "1fr 1fr 1fr 1fr"
+    , style "background-color" "gray"
     ]
+    (List.map renderCard model.cards)
+
+renderCard : Card -> Html Msg
+renderCard card =
+    button
+      [ onClick (Clicked card)
+      , style "margin" "5px"
+      , style "background-color" "white"
+      , style "font-size" "10ex"
+      ]
+      [ text card.kanji ]
