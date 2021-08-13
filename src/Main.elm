@@ -1,10 +1,11 @@
 module Main exposing (..)
 
 import Browser
-import Html exposing (Html, button, div, text)
+import Html exposing (Html, button, div, text, br, a)
 import Html.Events exposing (onClick)
-import Html.Attributes exposing (style)
+import Html.Attributes exposing (href, style)
 import Array exposing (Array)
+import Random exposing (Generator)
 
 import JukugoData exposing (jukugos, Kanji, matchingKanjiPair)
 
@@ -21,28 +22,35 @@ main =
 
 
 init : () -> ( Model, Cmd Msg )
-init query =
+init _ =
     ( initModel
     , Cmd.none
     )
 
 subscriptions : Model -> Sub Msg
-subscriptions model = Sub.none
+subscriptions _ = Sub.none
 
 
 -- MODEL
 
 
 type alias Model =
-  { kanjis: Array Kanji
-  , selected: Maybe (Int, Kanji)
-  , matches: List (Kanji, Kanji)
+  { kanjis : Array Kanji
+  , selected : Maybe (Int, Kanji)
+  , otherSelected : Maybe (Int, Kanji)
+  , matches : List (Kanji, Kanji)
+  , error : Maybe String
   }
 
 
 initModel : Model
 initModel =
-  { kanjis = initKanjis, selected = Nothing, matches = [] }
+  { kanjis = initKanjis
+  , selected = Nothing
+  , otherSelected = Nothing
+  , matches = []
+  , error = Nothing
+  }
 
 initKanjis : Array String
 initKanjis =
@@ -53,38 +61,114 @@ initKanjis =
 
 -- UPDATE
 
-
 type Msg
   = Clicked Int
+  | PickedNewKanjiPair (Kanji, Kanji)
 
+withDebugLog : Msg -> Msg
+withDebugLog message =
+  Debug.log "Msg" message
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-  case msg of
-    Clicked idx ->
+  case model.error of
+    Just _ -> (model, Cmd.none)
+    Nothing ->
+      case withDebugLog msg of
+        Clicked idx -> clicked model idx
+        PickedNewKanjiPair pair -> pickedNewKanjiPair model pair
+
+clicked model idx =
+  case model.otherSelected of
+    Just _ ->
+      (model, Cmd.none)  -- nothing to update if second selection was made
+    Nothing ->
       case Array.get idx model.kanjis of
-        Nothing -> (model, Cmd.none)
+        Nothing ->
+          (model, Cmd.none)
         Just kanji -> 
           case model.selected of
-            Nothing -> ({model | selected = Just (idx, kanji)}, Cmd.none)
+            Nothing ->
+              ({model | selected = Just (idx, kanji)}, Cmd.none)
             Just (selectedIdx, selectedKanji) ->
               if selectedIdx == idx
               then ({model | selected = Nothing}, Cmd.none)  -- cancel selection
               else (
                 if matchingKanjiPair selectedKanji kanji
-                then ({model | selected = Nothing, matches = (updateMatches model.matches (selectedKanji, kanji)) }, Cmd.none)
+                then
+                  let
+                    newModel =
+                      { model
+                        | otherSelected = Just (idx, kanji)
+                        , matches = (updateMatches model.matches (selectedKanji, kanji))
+                      }
+                  in
+                    (
+                      newModel
+                      , drawKanjiPair newModel
+                    )
                 else (model, Cmd.none)
               )
 
 updateMatches matches newMatch =
     matches ++ [newMatch]
 
+drawKanjiPair : Model -> Cmd Msg
+drawKanjiPair model =
+    candidateKanjiPairs model |> drawKanjiFromList
+
+candidateKanjiPairs : Model -> List (Kanji, Kanji)
+candidateKanjiPairs model = jukugos  -- TODO exclude those already matched
+
+drawKanjiFromList : List (Kanji, Kanji) -> Cmd Msg
+drawKanjiFromList kanjis =
+    Random.generate PickedNewKanjiPair (kanjiGenerator kanjis)
+
+kanjiGenerator : List (Kanji, Kanji) -> Random.Generator (Kanji, Kanji)
+kanjiGenerator kanjiPairs =
+    let
+      ( x, xs ) =
+        case kanjiPairs of
+          [] ->
+            ( ("一", "部"), [] )  -- fallback
+          k :: ks ->
+            ( k, ks )
+    in
+      Random.uniform x xs
+
+pickedNewKanjiPair : Model -> (Kanji, Kanji) -> (Model, Cmd Msg)
+pickedNewKanjiPair model pair =
+  ( updateWithNewKanjiPair model pair
+  , Cmd.none
+  )
+
+updateWithNewKanjiPair : Model -> (Kanji, Kanji) -> Model
+updateWithNewKanjiPair model (newKanji1, newKanji2) =
+  case (model.selected, model.otherSelected) of
+    (Just (idx1, _), Just (idx2, _)) ->
+      {model
+        | kanjis = replaceKanjis model.kanjis [(idx1, newKanji1), (idx2, newKanji2)]
+        , selected = Nothing
+        , otherSelected = Nothing
+      }
+    (_, _) ->
+      {model | error = Just "Missing selected kanjis"}
+
+replaceKanjis : Array Kanji -> List (Int, Kanji) -> Array Kanji
+replaceKanjis =
+  List.foldl (\(idx, k) ks -> Array.set idx k ks)
+
+
 -- VIEW
 
 
 view : Model -> Html Msg
 view model =
-  div [] [viewGrid model, viewMatches model.matches]
+  case model.error of
+    Nothing ->
+      div [] [viewGrid model, viewMatches model.matches]
+    Just error ->
+      viewError error
 
 viewGrid : Model -> Html Msg
 viewGrid model =
@@ -114,3 +198,17 @@ bgcolor maybeSelected idx =
 viewMatches : List (Kanji, Kanji) -> Html Msg
 viewMatches matches =
     div [] [matches |> List.map Debug.toString |> String.concat |> text ]
+
+viewError : String -> Html Msg
+viewError error =
+    div
+        [ style "color" "red", style "font-size" "x-large" ]
+        [ text "ERROR !"
+        , br [] []
+        , br [] []
+        , text error
+        , br [] []
+        , br [] []
+        , div [ style "flex-grow" "0" ] [ a [ href "" ] [ text "[Retry]" ] ]
+        -- , div [ style "flex-grow" "0" ] [ a [ href "." ] [ text "[Go back]" ] ]
+        ]
