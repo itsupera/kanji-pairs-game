@@ -5,7 +5,7 @@ import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
 import Html.Attributes exposing (style)
 
-
+import JukugoData exposing (jukugos)
 
 -- MAIN
 
@@ -38,9 +38,12 @@ type alias Model =
 
 init : Model
 init =
-  { cards = List.repeat 16 defaultCard }
+  { cards = List.map (\kanji -> {kanji = kanji, selected = False}) initKanjis }
 
-
+initKanjis : List String
+initKanjis =
+  List.take 8 jukugos
+  |> List.concatMap (\x -> String.split "" x)
 
 -- UPDATE
 
