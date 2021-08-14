@@ -89,7 +89,7 @@ drawInitialKanjisHelper : (List (Kanji, Kanji), List (Kanji, Kanji)) -> Generato
 drawInitialKanjisHelper (selected, _) =
     selected
     |> List.concatMap (\(k1, k2) -> [k1, k2])
-    |> Random.List.shuffle
+    |> Random.List.shuffle  -- replace by Random.constant for debugging
     |> Random.map Array.fromList
 
 pickedInitialKanjis model kanjis =
@@ -134,13 +134,13 @@ drawKanjiPair : Model -> Cmd Msg
 drawKanjiPair model =
     model.kanjis
     |> (Array.toList >> Set.fromList)
-    |> candidateKanjiPairs
+    |> candidateSecondKanjis
     |> Set.toList
     |> drawKanjiPairFromList
 
-candidateKanjiPairs : Set Kanji -> Set (Kanji, Kanji)
-candidateKanjiPairs kanjis =
-  unionMap (wordsMatchingFirstKanji kanjis) kanjis
+candidateSecondKanjis : Set Kanji -> Set Kanji
+candidateSecondKanjis firstKanjis =
+  unionMap (secondKanjisMatches firstKanjis) firstKanjis
 
 unionMap : (comparable -> Set comparable2) -> Set comparable -> Set comparable2
 unionMap f s =
@@ -149,28 +149,27 @@ unionMap f s =
     in
       Set.foldl g Set.empty s
 
-wordsMatchingFirstKanji : Set Kanji -> Kanji -> Set (Kanji, Kanji)
-wordsMatchingFirstKanji excluded kanji1 =
-  jukugosDict
-  |> MultiDict.get kanji1
-  |> Set.filter (\k -> not (Set.member k excluded))
-  |> Set.map (\kanji2 -> (kanji1, kanji2))
+secondKanjisMatches : Set Kanji -> Kanji -> Set Kanji
+secondKanjisMatches excluded kanji1 =
+  let
+    notExcluded kanji2 = not (Set.member kanji2 excluded)
+  in
+    MultiDict.get kanji1 jukugosDict
+    |> Set.filter notExcluded
 
-drawKanjiPairFromList : List (Kanji, Kanji) -> Cmd Msg
+drawKanjiPairFromList : List Kanji -> Cmd Msg
 drawKanjiPairFromList kanjis =
     Random.generate PickedNewKanjiPair (kanjiGenerator kanjis)
 
-kanjiGenerator : List (Kanji, Kanji) -> Random.Generator (Kanji, Kanji)
-kanjiGenerator kanjiPairs =
+kanjiGenerator : List Kanji -> Random.Generator (Kanji, Kanji)
+kanjiGenerator kanjis =
     let
-      ( x, xs ) =
-        case kanjiPairs of
-          [] ->
-            ( ("一", "部"), [] )  -- fallback
-          k :: ks ->
-            ( k, ks )
+      toPair (selected, _) =
+        case selected of
+          [kanji1, kanji2] -> (kanji1, kanji2)
+          _ -> ("一", "部")  -- fallback
     in
-      Random.uniform x xs
+      kanjis |> Random.List.choices 2 |> Random.map toPair
 
 pickedNewKanjiPair : Model -> (Kanji, Kanji) -> (Model, Cmd Msg)
 pickedNewKanjiPair model pair =
