@@ -7,6 +7,7 @@ import Html.Attributes exposing (href, style)
 import Array exposing (Array)
 import Random exposing (Generator, andThen)
 import Random.List exposing (choices, shuffle)
+import Set exposing (Set)
 
 import JukugoData exposing (jukugos, Kanji, matchingKanjiPair)
 import JukugoData exposing (jukugosDict)
@@ -131,13 +132,32 @@ updateMatches matches newMatch =
 
 drawKanjiPair : Model -> Cmd Msg
 drawKanjiPair model =
-    candidateKanjiPairs model |> drawKanjiFromList
+    model.kanjis
+    |> (Array.toList >> Set.fromList)
+    |> candidateKanjiPairs
+    |> Set.toList
+    |> drawKanjiPairFromList
 
-candidateKanjiPairs : Model -> List (Kanji, Kanji)
-candidateKanjiPairs model = jukugos
+candidateKanjiPairs : Set Kanji -> Set (Kanji, Kanji)
+candidateKanjiPairs kanjis =
+  unionMap (wordsMatchingFirstKanji kanjis) kanjis
 
-drawKanjiFromList : List (Kanji, Kanji) -> Cmd Msg
-drawKanjiFromList kanjis =
+unionMap : (comparable -> Set comparable2) -> Set comparable -> Set comparable2
+unionMap f s =
+    let
+      g x s2 = Set.union (f x) s2
+    in
+      Set.foldl g Set.empty s
+
+wordsMatchingFirstKanji : Set Kanji -> Kanji -> Set (Kanji, Kanji)
+wordsMatchingFirstKanji excluded kanji1 =
+  jukugosDict
+  |> MultiDict.get kanji1
+  |> Set.filter (\k -> not (Set.member k excluded))
+  |> Set.map (\kanji2 -> (kanji1, kanji2))
+
+drawKanjiPairFromList : List (Kanji, Kanji) -> Cmd Msg
+drawKanjiPairFromList kanjis =
     Random.generate PickedNewKanjiPair (kanjiGenerator kanjis)
 
 kanjiGenerator : List (Kanji, Kanji) -> Random.Generator (Kanji, Kanji)
