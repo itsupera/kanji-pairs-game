@@ -5,7 +5,8 @@ import Html exposing (Html, button, div, text, br, a)
 import Html.Events exposing (onClick)
 import Html.Attributes exposing (href, style)
 import Array exposing (Array)
-import Random exposing (Generator)
+import Random exposing (Generator, andThen)
+import Random.List exposing (choices, shuffle)
 
 import JukugoData exposing (jukugos, Kanji, matchingKanjiPair)
 import JukugoData exposing (jukugosDict)
@@ -26,7 +27,7 @@ main =
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( initModel
-    , Cmd.none
+    , drawInitialKanjis
     )
 
 subscriptions : Model -> Sub Msg
@@ -47,24 +48,20 @@ type alias Model =
 
 initModel : Model
 initModel =
-  { kanjis = initKanjis
+  { kanjis = Array.empty
   , selected = Nothing
   , otherSelected = Nothing
   , matches = []
   , error = Nothing
   }
 
-initKanjis : Array String
-initKanjis =
-  List.take 8 jukugos
-  |> List.concatMap (\(a, b) -> [a, b])
-  |> Array.fromList
-
 
 -- UPDATE
 
+
 type Msg
-  = Clicked Int
+  = PickedInitialKanjis (Array Kanji)
+  | Clicked Int
   | PickedNewKanjiPair (Kanji, Kanji)
 
 withDebugLog : Msg -> Msg
@@ -77,8 +74,25 @@ update msg model =
     Just _ -> (model, Cmd.none)
     Nothing ->
       case withDebugLog msg of
+        PickedInitialKanjis kanjis -> pickedInitialKanjis model kanjis
         Clicked idx -> clicked model idx
         PickedNewKanjiPair pair -> pickedNewKanjiPair model pair
+
+drawInitialKanjis : Cmd Msg
+drawInitialKanjis =
+    Random.List.choices 8 jukugos
+    |> Random.andThen drawInitialKanjisHelper
+    |> Random.generate PickedInitialKanjis
+
+drawInitialKanjisHelper : (List (Kanji, Kanji), List (Kanji, Kanji)) -> Generator (Array Kanji)
+drawInitialKanjisHelper (selected, _) =
+    selected
+    |> List.concatMap (\(k1, k2) -> [k1, k2])
+    |> Random.List.shuffle
+    |> Random.map Array.fromList
+
+pickedInitialKanjis model kanjis =
+  ({model | kanjis = kanjis}, Cmd.none)
 
 clicked model idx =
   case model.otherSelected of
