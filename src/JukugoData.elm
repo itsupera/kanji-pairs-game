@@ -16,10 +16,13 @@ matchingKanjiPair a b =
 
 jukugosDict : MultiDict Kanji Kanji
 jukugosDict =
-    List.foldl f MultiDict.empty jukugos
+    List.foldl jukugosDictHelper MultiDict.empty jukugos
 
-f : (Kanji, Kanji) -> MultiDict Kanji Kanji -> MultiDict Kanji Kanji
-f (a, b) dict = MultiDict.insert a b dict
+jukugosDictHelper : (Kanji, Kanji) -> MultiDict Kanji Kanji -> MultiDict Kanji Kanji
+jukugosDictHelper (a, b) dict = MultiDict.insert a b dict
+
+minFreq = 220 -- 10 000 first words
+-- minFreq = 1110 -- 5 000 first words
 
 jukugos : List (Kanji, Kanji)
 jukugos =
@@ -28,10 +31,16 @@ jukugos =
     |> values
 
 extractWord : List String -> Maybe (Kanji, Kanji)
-extractWord lst =
-    Array.fromList lst
-    |> Array.get 1
-    |> Maybe.andThen wordToKanjiPair
+extractWord rec =
+    case rec of
+        [id, word, freq] ->
+            case String.toInt freq of
+                Just f ->
+                    if f >= minFreq
+                    then wordToKanjiPair word
+                    else Nothing
+                Nothing -> Nothing
+        _ -> Nothing
 
 wordToKanjiPair : String -> Maybe (Kanji, Kanji)
 wordToKanjiPair word =
@@ -41,9 +50,6 @@ wordToKanjiPair word =
 
 jukugoCsv : Csv
 jukugoCsv = parseWith ";" jukugoDataStr
-
-
-
 
 jukugoDataStr : String
 jukugoDataStr =
