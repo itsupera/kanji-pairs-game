@@ -1,7 +1,7 @@
 module Main exposing (..)
 
 import Browser
-import Html exposing (Html, button, div, text, br, a)
+import Html exposing (Html, button, div, text, br, a, ul, li)
 import Html.Events exposing (onClick)
 import Html.Attributes exposing (href, style)
 import Array exposing (Array)
@@ -233,8 +233,11 @@ bgcolor maybeSelected idx =
 
 viewMatches : List (Kanji, Kanji) -> Html Msg
 viewMatches matches =
-    div [] [matches |> List.map Debug.toString |> String.concat |> text ]
-
+    let
+      history = List.map matchToLi (List.reverse matches)
+      matchToLi (k1, k2) = li [] [text (k1 ++ k2)]
+    in
+      div [] [text "Previous words:", (ul [] history) ]
 viewError : String -> Html Msg
 viewError error =
     div
