@@ -9,8 +9,7 @@ import Random exposing (Generator, andThen)
 import Random.List exposing (choices, shuffle)
 import Set exposing (Set)
 
-import JukugoData exposing (jukugos, Kanji, matchingKanjiPair)
-import JukugoData exposing (jukugosDict)
+import JukugoData exposing (Kanji, frequentJukugos, matchingKanjiPair, allJukugosDict)
 import MultiDict exposing (MultiDict)
 
 -- MAIN
@@ -81,7 +80,7 @@ update msg model =
 
 drawInitialKanjis : Cmd Msg
 drawInitialKanjis =
-    Random.List.choices 8 jukugos
+    Random.List.choices 8 frequentJukugos
     |> Random.andThen drawInitialKanjisHelper
     |> Random.generate PickedInitialKanjis
 
@@ -154,7 +153,7 @@ secondKanjisMatches excluded kanji1 =
   let
     notExcluded kanji2 = not (Set.member kanji2 excluded)
   in
-    MultiDict.get kanji1 jukugosDict
+    MultiDict.get kanji1 allJukugosDict
     |> Set.filter notExcluded
 
 drawKanjiPairFromList : List Kanji -> Cmd Msg

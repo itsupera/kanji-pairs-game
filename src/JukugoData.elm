@@ -1,4 +1,4 @@
-module JukugoData exposing (jukugos, Kanji, jukugosDict, matchingKanjiPair)
+module JukugoData exposing (Kanji, matchingKanjiPair, allJukugosDict, frequentJukugos)
 
 import Csv exposing (Csv, parseWith)
 import Array exposing (fromList, get)
@@ -11,35 +11,48 @@ type alias Kanji = String
 
 matchingKanjiPair : Kanji -> Kanji -> Bool
 matchingKanjiPair a b =
-    MultiDict.get a jukugosDict |> Set.member b
+    MultiDict.get a allJukugosDict |> Set.member b
        
 
-jukugosDict : MultiDict Kanji Kanji
-jukugosDict =
-    List.foldl jukugosDictHelper MultiDict.empty jukugos
-
-jukugosDictHelper : (Kanji, Kanji) -> MultiDict Kanji Kanji -> MultiDict Kanji Kanji
-jukugosDictHelper (a, b) dict = MultiDict.insert a b dict
-
-minFreq = 220 -- 10 000 first words
+allJukugosDict : MultiDict Kanji Kanji
+allJukugosDict =
+    let
+        f (a, b) dict = MultiDict.insert a b dict
+    in
+        List.foldl f MultiDict.empty allJukugos
+minFreq = 22315 -- 500 first words
 -- minFreq = 1110 -- 5 000 first words
+-- minFreq = 220 -- 10 000 first words
 
-jukugos : List (Kanji, Kanji)
-jukugos =
+allJukugos : List (Kanji, Kanji)
+allJukugos = List.map Tuple.first jukugosWithFreq
+
+frequentJukugos : List (Kanji, Kanji)
+frequentJukugos =
+    let
+        f (kanjis, freq) =
+            if freq >= minFreq
+            then Just kanjis
+            else Nothing
+    in
+        List.filterMap f jukugosWithFreq
+
+
+jukugosWithFreq : List ((Kanji, Kanji), Int)
+jukugosWithFreq =
     jukugoCsv.records
     |> List.map extractWord
     |> values
 
-extractWord : List String -> Maybe (Kanji, Kanji)
+extractWord : List String -> Maybe ((Kanji, Kanji), Int)
 extractWord rec =
     case rec of
-        [id, word, freq] ->
-            case String.toInt freq of
-                Just f ->
-                    if f >= minFreq
-                    then wordToKanjiPair word
-                    else Nothing
-                Nothing -> Nothing
+        [_, word, freqStr] ->
+            String.toInt freqStr
+            |> Maybe.andThen (\freq ->
+                wordToKanjiPair word
+                |> Maybe.map (\kanjis -> (kanjis, freq))
+            )
         _ -> Nothing
 
 wordToKanjiPair : String -> Maybe (Kanji, Kanji)
