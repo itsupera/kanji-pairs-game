@@ -8,6 +8,8 @@ import Array exposing (Array)
 import Random exposing (Generator)
 
 import JukugoData exposing (jukugos, Kanji, matchingKanjiPair)
+import JukugoData exposing (jukugosDict)
+import MultiDict exposing (MultiDict)
 
 -- MAIN
 
@@ -118,7 +120,7 @@ drawKanjiPair model =
     candidateKanjiPairs model |> drawKanjiFromList
 
 candidateKanjiPairs : Model -> List (Kanji, Kanji)
-candidateKanjiPairs model = jukugos  -- TODO exclude those already matched
+candidateKanjiPairs model = jukugos
 
 drawKanjiFromList : List (Kanji, Kanji) -> Cmd Msg
 drawKanjiFromList kanjis =
