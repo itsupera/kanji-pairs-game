@@ -3,7 +3,7 @@ Kanji Pairs Game
 
 A game where you match kanjis together to form jukugos (2 kanji words).
 
-[Try it here](http://itsupera.co/kanjipairs)
+[Try it here](http://itsupera.co/kanjipairs.html)
 
 Setup
 ------
