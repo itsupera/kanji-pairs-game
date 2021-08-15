@@ -235,16 +235,25 @@ view : Model -> Html Msg
 view model =
   case model.error of
     Nothing ->
-      div [] [viewGrid model, viewMatches model.matches]
+      div
+        [ style "max-width" "800px"
+        , style "margin" "0 auto"
+        ]
+        [ howToPlay
+        , viewGrid model
+        , viewMatches model.matches
+        ]
     Just error ->
       viewError error
+
+howToPlay =
+  div [] [text "How to play: Selected two kanjis (in order) to form a jukugo (2 kanji word)."]
 
 viewGrid : Model -> Html Msg
 viewGrid model =
   div
     [ style "display" "grid"
     , style "grid-template-columns" "1fr 1fr 1fr 1fr"
-    , style "grid-template-rows" "1fr 1fr 1fr 1fr"
     , style "background-color" "gray"
     ]
     (model.kanjis |> Array.toIndexedList |> List.map (renderCard model))
@@ -256,6 +265,7 @@ renderCard model (idx, kanji) =
     , style "margin" "5px"
     , style "background-color" (bgcolor model.selected model.otherSelected idx)
     , style "font-size" "10ex"
+    , style "aspect-ratio" "1"
     ]
     [ text kanji ]
 
