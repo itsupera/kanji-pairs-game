@@ -1,5 +1,7 @@
 module Timer exposing (..)
 
+import Time exposing (Posix, posixToMillis)
+
 type alias Timer =
   { active : Bool
   , start : Int
@@ -27,6 +29,14 @@ startTimer currentTime =
     , elapsed = 0
     }
 
-updateTimer : Timer -> Int -> Timer
-updateTimer timer currentTime =
-  { timer | elapsed = (currentTime -  timer.start) }
+
+updateTimer : Timer -> Time.Posix -> Timer
+updateTimer timer posixTime =
+  let
+    currentTime = posixToMillis posixTime
+  in
+    case (timer.active, timer.start) of
+      (False, _) -> timer
+      (True, 0) -> startTimer currentTime
+      (True, _) -> { timer | elapsed = (currentTime -  timer.start) }
+  

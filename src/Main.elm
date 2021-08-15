@@ -8,7 +8,7 @@ import Array exposing (Array)
 import Random exposing (Generator, andThen)
 import Random.List exposing (choices, shuffle)
 import Set exposing (Set)
-import Time exposing (Posix, posixToMillis)
+import Time exposing (Posix)
 import MultiDict exposing (MultiDict)
 import Browser.Events exposing (onAnimationFrame)
 
@@ -205,26 +205,17 @@ replaceKanjis =
 ticked : Model -> Time.Posix -> ( Model, Cmd Msg )
 ticked model posixTime =
   let
-    currentTime = posixToMillis posixTime
+    newTimer = updateTimer model.timer posixTime
   in
-    if not model.timer.active
+    if newTimer.elapsed > 500
     then
-      (model, Cmd.none)
+      ( { model | timer = stoppedTimer }
+      , drawKanjiPair model
+      )
     else
-      if model.timer.start == 0
-      then
-        ( {model | timer = startTimer currentTime }, Cmd.none )
-      else
-        let
-          updatedTimer = updateTimer model.timer currentTime
-        in
-          if updatedTimer.elapsed > 500
-          then
-            ( { model | timer = stoppedTimer }
-            , drawKanjiPair model
-            )
-          else
-            (model, Cmd.none)
+      ( { model | timer = newTimer}
+      , Cmd.none
+      )
 
 
 -- SUBSCRIPTIONS
