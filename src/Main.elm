@@ -8,9 +8,12 @@ import Array exposing (Array)
 import Random exposing (Generator, andThen)
 import Random.List exposing (choices, shuffle)
 import Set exposing (Set)
-
-import JukugoData exposing (Kanji, frequentJukugos, matchingKanjiPair, allJukugosDict)
+import Time exposing (Posix, posixToMillis)
 import MultiDict exposing (MultiDict)
+import Browser.Events exposing (onAnimationFrame)
+
+import Timer exposing (..)
+import JukugoData exposing (Kanji, frequentJukugos, matchingKanjiPair, allJukugosDict)
 
 -- MAIN
 
@@ -30,9 +33,6 @@ init _ =
     , drawInitialKanjis
     )
 
-subscriptions : Model -> Sub Msg
-subscriptions _ = Sub.none
-
 
 -- MODEL
 
@@ -42,9 +42,9 @@ type alias Model =
   , selected : Maybe (Int, Kanji)
   , otherSelected : Maybe (Int, Kanji)
   , matches : List (Kanji, Kanji)
+  , timer : Timer
   , error : Maybe String
   }
-
 
 initModel : Model
 initModel =
@@ -52,6 +52,7 @@ initModel =
   , selected = Nothing
   , otherSelected = Nothing
   , matches = []
+  , timer = stoppedTimer
   , error = Nothing
   }
 
@@ -63,10 +64,15 @@ type Msg
   = PickedInitialKanjis (Array Kanji)
   | Clicked Int
   | PickedNewKanjiPair (Kanji, Kanji)
+  | Ticked Time.Posix
 
 withDebugLog : Msg -> Msg
 withDebugLog message =
-  Debug.log "Msg" message
+    case message of
+        Ticked _ ->
+            message
+        _ ->
+            Debug.log "Msg" message
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
@@ -77,6 +83,7 @@ update msg model =
         PickedInitialKanjis kanjis -> pickedInitialKanjis model kanjis
         Clicked idx -> clicked model idx
         PickedNewKanjiPair pair -> pickedNewKanjiPair model pair
+        Ticked currentTime -> ticked model currentTime
 
 drawInitialKanjis : Cmd Msg
 drawInitialKanjis =
@@ -94,6 +101,7 @@ drawInitialKanjisHelper (selected, _) =
 pickedInitialKanjis model kanjis =
   ({model | kanjis = kanjis}, Cmd.none)
 
+clicked : Model -> Int -> ( Model, Cmd Msg )
 clicked model idx =
   case model.otherSelected of
     Just _ ->
@@ -117,11 +125,12 @@ clicked model idx =
                       { model
                         | otherSelected = Just (idx, kanji)
                         , matches = (updateMatches model.matches (selectedKanji, kanji))
+                        , timer = activatedTimer
                       }
                   in
                     (
                       newModel
-                      , drawKanjiPair newModel
+                      , Cmd.none
                     )
                 else (model, Cmd.none)
               )
@@ -193,6 +202,41 @@ replaceKanjis =
   List.foldl (\(idx, k) ks -> Array.set idx k ks)
 
 
+ticked : Model -> Time.Posix -> ( Model, Cmd Msg )
+ticked model posixTime =
+  let
+    currentTime = posixToMillis posixTime
+  in
+    if not model.timer.active
+    then
+      (model, Cmd.none)
+    else
+      if model.timer.start == 0
+      then
+        ( {model | timer = startTimer currentTime }, Cmd.none )
+      else
+        let
+          updatedTimer = updateTimer model.timer currentTime
+        in
+          if updatedTimer.elapsed > 500
+          then
+            ( { model | timer = stoppedTimer }
+            , drawKanjiPair model
+            )
+          else
+            (model, Cmd.none)
+
+
+-- SUBSCRIPTIONS
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+  if model.timer.active
+  then onAnimationFrame Ticked
+  else Sub.none
+
+
 -- VIEW
 
 
@@ -212,22 +256,35 @@ viewGrid model =
     , style "grid-template-rows" "1fr 1fr 1fr 1fr"
     , style "background-color" "gray"
     ]
-    (model.kanjis |> Array.toIndexedList |> List.map (renderCard model.selected))
+    (model.kanjis |> Array.toIndexedList |> List.map (renderCard model))
 
-renderCard : Maybe (Int, Kanji) -> (Int, Kanji) -> Html Msg
-renderCard maybeSelected (idx, kanji) =
-    button
-      [ onClick (Clicked idx)
-      , style "margin" "5px"
-      , style "background-color" (bgcolor maybeSelected idx)
-      , style "font-size" "10ex"
-      ]
-      [ text kanji ]
-bgcolor : Maybe (Int, Kanji) -> Int -> String
-bgcolor maybeSelected idx =
-    maybeSelected
-    |> Maybe.map (\(selectedIdx, _) -> if selectedIdx == idx then "red" else "white")
-    |> Maybe.withDefault "white"
+renderCard : Model -> (Int, Kanji) -> Html Msg
+renderCard model (idx, kanji) =
+  button
+    [ onClick (Clicked idx)
+    , style "margin" "5px"
+    , style "background-color" (bgcolor model.selected model.otherSelected idx)
+    , style "font-size" "10ex"
+    ]
+    [ text kanji ]
+
+
+bgcolor : Maybe (Int, Kanji) -> Maybe (Int, Kanji) -> Int -> String
+bgcolor maybeSelected maybeOtherSelected idx =
+  case (maybeSelected, maybeOtherSelected) of
+      (Just (idx1, _), Just (idx2, _)) ->
+        if idx == idx1 || idx == idx2
+        then matchedColor
+        else defaultColor
+      (Just (idx1, _), Nothing) ->
+        if idx == idx1
+        then selectedColor
+        else defaultColor
+      (_, _) -> defaultColor
+
+defaultColor = "white"
+selectedColor = "#F0E68C" -- khaki
+matchedColor = "#ACE1AF" -- celadon
 
 viewMatches : List (Kanji, Kanji) -> Html Msg
 viewMatches matches =
