@@ -66,20 +66,21 @@ type Msg
   | PickedNewKanjiPair (Kanji, Kanji)
   | Ticked Time.Posix
 
-withDebugLog : Msg -> Msg
-withDebugLog message =
-    case message of
-        Ticked _ ->
-            message
-        _ ->
-            Debug.log "Msg" message
+-- withDebugLog : Msg -> Msg
+-- withDebugLog message =
+--     case message of
+--         Ticked _ ->
+--             message
+--         _ ->
+--             Debug.log "Msg" message
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case model.error of
     Just _ -> (model, Cmd.none)
     Nothing ->
-      case withDebugLog msg of
+      -- case withDebugLog msg of
+      case msg of
         PickedInitialKanjis kanjis -> pickedInitialKanjis model kanjis
         Clicked idx -> clicked model idx
         PickedNewKanjiPair pair -> pickedNewKanjiPair model pair

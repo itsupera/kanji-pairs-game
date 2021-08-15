@@ -21,9 +21,11 @@ sudo mv elm /usr/local/bin/
 For development:
 ```bash
 elm reactor
+x-www-browser http://localhost:8000/src/Main.elm
 ```
 
 Build for production:
 ```bash
-elm make src/Main.elm --output elm.js
+elm make --optimize src/Main.elm
+x-www-browser index.html
 ```
