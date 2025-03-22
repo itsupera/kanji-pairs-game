@@ -8,6 +8,22 @@ A game where you match kanjis together to form jukugos (2 kanji words).
 Setup
 ------
 
+### With Docker (recommended)
+
+Install [Docker](https://docs.docker.com/get-docker/) and build the image:
+
+```bash
+docker build -t kanji-pairs-game .
+```
+
+Run the container:
+
+```bash
+docker run -p 8000:8000 kanji-pairs-game
+```
+
+### Manual
+
 [Install Elm 0.19](https://guide.elm-lang.org/install/elm.html)
 
 On Linux you can do this:
